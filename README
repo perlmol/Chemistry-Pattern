@@ -9,6 +9,7 @@ todo:
     add atom and bond mapping from patt to mol
     add look-ahead and negation
     consider adding * and +
+    add match all overlapping
 
 INSTALLATION
 

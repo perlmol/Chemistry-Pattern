@@ -62,6 +62,14 @@ sub new_bond {
 
 our $Debug = 0;
 
+sub match_any {
+
+}
+
+sub match_next {
+
+}
+
 sub match_all {
     my ($patt, $mol) = @_;
     print "first_match: $mol with $patt\n" if $Debug;

@@ -36,6 +36,7 @@ sub test {
 }
 
 Chemistry::Obj::accessor('test_sub');
+Chemistry::Obj::accessor('map_to');
 
 sub match {
     my $what = shift; # self - the pattern atom to match
@@ -48,11 +49,13 @@ sub match {
         "from_where: [@$from_where]; from_what: [@$from_what];\n" if $Debug;
     
     if ($what->attr("painted")) { # ring closure in pattern
-        if ($where->attr("painted")) { # ring also closed ok in mol
-            print "\tring closed at $where\n" if $Debug; 
+        if ($where == $what->map_to) { # ring also closed ok in mol
+            print "\tring closed at where: $where; what: $what; map: ",
+                $what->map_to, "\n" if $Debug; 
             ($match, @ret) = $what->match_bonds(@_); # continue with same params
         } else {
-            print "\tring didn't close at $where\n" if $Debug;
+            print "\tring didn't close at where: $where; what: $what; map: ",
+                $what->map_to, "\n" if $Debug; 
         }
     } elsif ($where->attr("painted")) { # ring closure in mol
         print "\tatom $where already visited\n" if $Debug;
@@ -61,7 +64,8 @@ sub match {
 
         # Now check bonds
         $where->attr("painted", 1);
-        $what->attr("painted", 1);
+        $what->attr("painted", 1); # this is kind of redundant. map_to should be enough
+        $what->map_to($where);
         ($match, @ret) = $what->match_bonds(@_); # continue with same params
         $what->attr("painted", 0);
         $where->attr("painted", 0);
@@ -104,8 +108,8 @@ sub match_bonds {
                 print "\tbond $mol_bond matches $patt_bond\n" if $Debug;
 
                 # now check the atom on the other side. First, get atom
-                my ($patt_nei) = grep {$_ != $what} $patt_bond->atoms;
-                my ($mol_nei)  = grep {$_ != $where} $mol_bond->atoms;
+                my ($patt_nei) = grep {$_ ne $what} $patt_bond->atoms;
+                my ($mol_nei)  = grep {$_ ne $where} $mol_bond->atoms;
                 print "\tChecking neighbor $mol_nei with $patt_nei\n" if $Debug;
 
                 # recursive call to match atom
@@ -120,7 +124,8 @@ sub match_bonds {
                 $patt_bond->attr("painted", 0);
                 $mol_bond->attr("painted", 0);
 
-                last if $match;
+                last if $match; 
+                # should continue here if we wanted overlapping matches
             } else {
                 print "\tbond $mol_bond does not match $patt_bond\n" if $Debug;
             }
