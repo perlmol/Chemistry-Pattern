@@ -30,15 +30,16 @@ sub new {
     my $class = shift;
     my $self = $class->SUPER::new(@_);
     $self->reset;
+    $self->{options} = {overlap=>1, permute=>0};
     $self;
 }
 
 sub options {
     my $self = shift;
     if (@_ == 1) {
-        $self->{options} = $_[0];
+        $self->{options} = {%{$self->{options}}, %{$_[0]}};
     } else {
-        $self->{options} = {@_};
+        $self->{options} = {%{$self->{options}}, @_};
     }
 }
 
@@ -78,9 +79,18 @@ sub reset {
 }
 
 sub already_matched {
-    my ($self, $key) = @_;
+    my ($self, @atoms) = @_;
+    my @ids = map {$_->id} @atoms;
+    my $unsorted_key = join " ", @ids;
+    my $key;
+    if ($self->{options}{permute}) {
+        $key = $unsorted_key;
+    } else {
+        $key = join " ", sort @ids;
+    }
+
     if ($self->{already_matched}{$key}) {
-        print "already matched $key\n" if $Debug;
+        print "already matched $unsorted_key\n" if $Debug;
         return 1;
     } else {
         $self->{already_matched}{$key} = 1;
@@ -137,19 +147,18 @@ sub match_next {
     my $match;
     print "match_next\n" if $Debug;
 
+    $self->match_local_init($self->{current_atom}) unless $self->{options}{overlap};
     while (1) {
         ($match) = $self->match_local_next;
         if ($match) {
-            if ($self->{options}{permute}) {
-                last;
+            if ($self->already_matched($self->atom_map)) {
+                $match = 0;
+                next; # already matched this; try again
             } else {
-                my $match_key = join " ", sort map {$_->id} $self->atom_map;
-                if ($self->already_matched($match_key)) {
-                    $match = 0;
-                    next;
-                } else {
-                    last;
+                unless ($self->{options}{overlap}) {
+                    $self->next_atom;
                 }
+                last; # matched!
             }
         } else { 
             my $atom = $self->next_atom;
@@ -170,9 +179,13 @@ sub match_local_init {
         from_where => [$atom], 
         from_what => [$patt->atoms(1)],
     };
+    my $mol = $patt->map_to;
 
     print "match_local_init(",$patt->atoms(1),", $atom)\n" if $Debug;
     for ($patt->atoms, $patt->bonds) { $_->map_to(undef) }
+    if ($mol) {
+        for ($mol->atoms, $mol->bonds) { $_->del_attr('painted') }
+    }
     $patt->{stack} = \@stack;
     $patt->{state} = $state;
 
@@ -187,7 +200,7 @@ sub match_local_next {
 
     print "match_local_next\n" if $Debug;
 
-    while (1) {
+    LOOP: while (1) {
         # initialize variables for this iteration
         my $from_where = $stack->[-1]{from_where};
         my $from_what = $stack->[-1]{from_what};
@@ -218,9 +231,10 @@ sub match_local_next {
                 print "\tatom $where already visited\n" if $Debug;
             } elsif ($what->test($where)) { ### ATOM TEST
                 print "\tatom $where matches $what\n" if $Debug;
-                # Now check bonds
                 $where->attr("painted", 1);
                 $what->map_to($where);
+                $stack->[-1]{paint} = 1;
+                # Now check bonds
                 $$state = 2;
                 next; #XXX
             } 
@@ -234,9 +248,6 @@ sub match_local_next {
             if (!$patt_bond) { # no more bonds to match?
                 print "\tNo more bonds to match at $what\n" if $Debug;
                 if (@$from_where > 1) { # go back and finish previous atom
-                    #pop @$_ for ($from_where, $from_what, $from_what_bond_i,
-                        #$from_where_bond_i);
-                        #$from_where_bond_i->[-1] = 0;
                     push @$stack, {
                         from_where_bond_i => 
                         [@$from_where_bond_i[0 .. $#$from_where_bond_i - 2],0], 
@@ -295,11 +306,14 @@ sub match_local_next {
         } elsif ($$state == 3) { # Backtracking mode
             my $fwhatb = 0;
             do {
-                $where->del_attr("painted");
-                $what->map_to(undef);
-                last unless @$stack > 1;
+                last LOOP unless @$stack > 1;
+                print "\tpopping stack\n" if $Debug;
                 pop @$stack;
                 my $sf = $stack->[-1];
+                if ($sf->{paint}) {
+                    $where->del_attr("painted");
+                    $what->map_to(undef);
+                }
                 ($from_what, $from_where, $from_what_bond_i, 
                 $from_where_bond_i) = @$sf{qw(from_what from_where 
                     from_what_bond_i from_where_bond_i)};

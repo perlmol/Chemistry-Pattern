@@ -11,6 +11,8 @@ use warnings;
 use Data::Dumper;
 
 our $Debug ||= 0;
+our $permute ||= 0;
+our $overlap ||= 0;
 $Chemistry::Pattern::Atom::Debug = $Debug;
 $Chemistry::Pattern::Debug = $Debug;
 
@@ -26,7 +28,7 @@ my $mol_parser = new Chemistry::Smiles();
 my ($mol, $patt);
 
 $mol_parser->parse($patt_str, $patt = Chemistry::Pattern->new);
-#$patt->options(permute => 1);
+$patt->options(permute => $permute, overlap => $overlap);
 
 for my $mol_str (@mol_strs) {
     print "Mol: $mol_str\n";
