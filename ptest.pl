@@ -12,7 +12,7 @@ use Data::Dumper;
 
 our $Debug ||= 0;
 our $permute ||= 0;
-our $overlap ||= 0;
+our $overlap ||= 1;
 $Chemistry::Pattern::Atom::Debug = $Debug;
 $Chemistry::Pattern::Debug = $Debug;
 

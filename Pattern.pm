@@ -3,11 +3,57 @@ $VERSION = '0.01';
 
 =head1 NAME
 
-Chemistry::Pattern - Substructure pattern matching
+Chemistry::Pattern - Chemical substructure pattern matching
 
 =head1 SYNOPSIS
 
+    use Chemistry::Pattern;
+    use Chemistry::Mol;
+    use Chemistry::Smiles;
+
+    # Create a pattern and a molecule from SMILES strings
+    my $mol_str = "C1CCCC1C(Cl)=O";
+    my $patt_str = "C(=O)Cl";
+    my $mol_parser = new Chemistry::Smiles();
+    my ($patt, $mol);
+    $mol_parser->parse($mol_str, $mol = Chemistry::Mol->new);
+    $mol_parser->parse($patt_str, $patt = Chemistry::Pattern->new);
+
+    # try to match the pattern
+    while ($patt->match($mol)) {
+        @matched_atoms = $patt->atom_map;
+        print "Matched: (@matched_atoms)\n";
+        # should print something like "Matched: (a6 a8 a7)"
+    }
+
 =head1 DESCRIPTION
+
+This module implements basic pattern matching for molecules.
+The Chemistry::Pattern class is a subclass of Chemistry::Mol, so patterns
+have all the properties of molecules and can come from reading the same
+file formats. Of course there are certain formats (such as SMARTS)
+that are exclusively used to describe patterns.
+
+To perform a pattern matching operation on a molecule, follow these steps.
+
+1) Create a pattern object, either by parsing a file or string, or by adding
+atoms and bonds by hand by using Chemistry::Mol methods. Note that atoms and 
+bonds in a pattern should be Chemistry::Pattern::Atom and 
+Chemistry::Patern::Bond objects. Let's assume that the pattern object is 
+stored in $patt and that the molecule is $mol.
+
+2) Execute the pattern on the molecule by calling $patt->match($mol).
+
+3) If $patt->match() returns true, extract the "map" that relates the pattern to
+the molecule by calling $patt->atom_map or $patt->bond_map. These methods 
+return a list of the atoms or bonds in the molecule that are matched by the 
+corresponding atoms in the pattern. Thus $patt->atom_map(1) would be analogous
+to the $1 special variable used for regular expresion matching. The difference
+between Chemistry::Pattern and Perl regular expressions is that atoms and bonds
+are always captured.
+
+4) If more than one match for the molecule is desired, repeat from step (2) 
+until match() returns false.
 
 =cut
 
@@ -24,6 +70,10 @@ use Chemistry::Pattern::Bond;
 
 =item Chemistry::Pattern->new(name => value, ...)
 
+Create a new empty pattern. This is just like the Chemistry::Mol constructor,
+with one additional option: "options", which expects a hash reference (the
+options themselves are described under the options() method).
+
 =cut
 
 sub new {
@@ -33,6 +83,29 @@ sub new {
     $self->{options} = {overlap=>1, permute=>0};
     $self;
 }
+
+=item $pattern->options(option => value,...)
+
+Available options:
+
+=over
+
+=item overlap
+
+If true, matches may overlap. For example, the CC pattern could match twice
+on propane if this option is true, but only once if it is false. This option
+is true by default.
+
+=item permute
+
+Sometimes there is more than one way of matching the same set of pattern atoms
+on the same set of molecule atoms. If true, return these "redundant" matches.
+For example, the CC pattern could match ethane with two different permutations
+(forwards and backwards). This option is false by default.
+
+=back
+
+=cut
 
 sub options {
     my $self = shift;
@@ -119,16 +192,39 @@ sub next_atom {
 
 Chemistry::Obj::accessor "map_to";
 
+=item $pattern->atom_map
+
+Returns the list of atoms that matched the last time $pattern->match was called.
+
+=cut
+
 sub atom_map {
     my $self = shift;
     map { $_->map_to } $self->atoms(@_);
 }
+
+=item $pattern->bond_map
+
+Returns the list of bonds that matched the last time $pattern->match was called.
+
+=cut
 
 sub bond_map {
     my $self = shift;
     map { $_->map_to } $self->bonds(@_);
 }
 
+=item $pattern->match($mol)
+
+Returns true if the pattern matches the molecule. If called again for the 
+same molecule, continues matching where it left off (in a way similar to global
+regular expressions under scalar context). When there are no matches left,
+returns false.
+
+To find out which atoms and bonds matched, use the atom_map and bond_map
+methods.
+
+=cut
 
 # testing a different implementation
 sub match {
@@ -211,6 +307,7 @@ sub match_local_next {
         my $what  = $from_what->[-1];
         my $where_bond_i = $from_where_bond_i->[-1];
         my $what_bond_i = $from_what_bond_i->[-1];
+        my $d = @$stack;
 
         last unless $what;
         print "    $$state: $what($what_bond_i),$where($where_bond_i)\n" if $Debug >= 2;
@@ -219,27 +316,26 @@ sub match_local_next {
         if ($$state == 1) {
             if ($what->map_to) { # ring closure in pattern
                 if ($where eq $what->map_to) { # ring also closed ok in mol
-                    print "\tring closed at where: $where; what: $what; map: ",
+                    print "\t$d:ring closed at where: $where; what: $what; map: ",
                         $what->map_to, "\n" if $Debug; 
                     #continue to check bonds
                     $$state = 2;
                     next
                 } else {
-                    print "\tring didn't close at where: $where; what: $what; map: ",
+                    print "\t$d:ring didn't close at where: $where; what: $what; map: ",
                         $what->map_to, "\n" if $Debug; 
                 }
             } elsif ($where->attr("painted")) { # ring closure in mol
-                print "\tatom $where already visited\n" if $Debug;
+                print "\t$d:atom $where already visited\n" if $Debug;
             } elsif ($what->test($where)) { ### ATOM TEST
-                print "\tatom $where matches $what\n" if $Debug;
+                print "\t$d:atom $where matches $what\n" if $Debug;
                 $where->attr("painted", 1);
                 $what->map_to($where);
-                $stack->[-1]{paint} = 1;
                 # Now check bonds
                 $$state = 2;
                 next; #XXX
             } 
-            print "\tatom $where does not match $what\n" if $Debug;
+            print "\t$d:atom $where does not match $what\n" if $Debug;
             # backtrack
             $$state = 3;
             next; #XXX
@@ -247,22 +343,17 @@ sub match_local_next {
             ### start of match_bonds
             my ($patt_bond) = ($what->bonds)[$what_bond_i];
             if (!$patt_bond) { # no more bonds to match?
-                print "\tNo more bonds to match at $what\n" if $Debug;
+                print "\t$d:No more bonds to match at $what\n" if $Debug;
                 if (@$from_where > 1) { # go back and finish previous atom
-                    push @$stack, {
-                        from_where_bond_i => 
-                        [@$from_where_bond_i[0 .. $#$from_where_bond_i - 2],0], 
-                        from_what_bond_i => 
-                        [@$from_what_bond_i[0 .. $#$from_what_bond_i - 1]],
-                        from_where => 
-                        [@$from_where[0 .. $#$from_where - 1]], 
-                        from_what => 
-                        [@$from_what[0 .. $#$from_what - 1]],
-                    };
+                    pop @$from_where_bond_i;
+                    $from_where_bond_i->[-1] = 0;
+                    pop @$from_what_bond_i;
+                    pop @$from_what;
+                    pop @$from_where;
                     next; #XXX
                 } else {
                     $match = 1; # Finally matched! This is the deepest point
-                    print "\tFinally matched!\n" if $Debug;
+                    print "\t$d:Finally matched!\n" if $Debug;
                     $$state = 3; 
                     last;
                 } 
@@ -271,18 +362,18 @@ sub match_local_next {
                 my $mol_bond = ($where->bonds)[$where_bond_i];
                 if (!$mol_bond) {
                     # no more bonds left to try; backtrack
-                    print "\tno more bonds left to try at $where; backtracking\n" if $Debug;
+                    print "\t$d:no more bonds left to try at $where; backtracking\n" if $Debug;
                     $$state = 3;
                     next; #XXX
                 } else {
                     ++$from_where_bond_i->[-1], next if $mol_bond->attr("painted"); #XXX
                     if ($patt_bond->type eq $mol_bond->type) { ### BOND TEST
-                        print "\tbond $mol_bond matches $patt_bond\n" if $Debug;
+                        print "\t$d:bond $mol_bond matches $patt_bond\n" if $Debug;
 
                         # now check the atom on the other side. First, get atom
                         my ($patt_nei) = grep {$_ ne $what} $patt_bond->atoms;
                         my ($mol_nei)  = grep {$_ ne $where} $mol_bond->atoms;
-                        print "\tChecking neighbor $mol_nei with $patt_nei\n" if $Debug;
+                        #print "\t$d:Checking neighbor $mol_nei with $patt_nei\n" if $Debug;
 
                         # recursive call to match atom
                         $patt_bond->map_to($mol_bond);
@@ -299,7 +390,7 @@ sub match_local_next {
                         $$state = 1;
                         next; #XXX
                     } else {
-                        print "\tbond $mol_bond does not match $patt_bond\n" if $Debug;
+                        print "\t$d:bond $mol_bond does not match $patt_bond\n" if $Debug;
                         ++$from_where_bond_i->[-1], next; # try next bond
                     }
                 }
@@ -308,13 +399,12 @@ sub match_local_next {
             my $fwhatb = 0;
             do {
                 last LOOP unless @$stack > 1;
-                print "\tpopping stack\n" if $Debug;
+                print "\t$d:popping stack\n" if $Debug;
                 pop @$stack;
+                $d = @$stack;
                 my $sf = $stack->[-1];
-                if ($sf->{paint}) {
-                    $where->del_attr("painted");
-                    $what->map_to(undef);
-                }
+                $where->del_attr("painted");
+                $what->map_to(undef);
                 ($from_what, $from_where, $from_what_bond_i, 
                 $from_where_bond_i) = @$sf{qw(from_what from_where 
                     from_what_bond_i from_where_bond_i)};
@@ -350,12 +440,10 @@ sub dump_stack {
 
 =back
 
-=head1 BUGS
-
 =head1 SEE ALSO
 
-L<Chemistry::Atom>, L<Chemistry::Bond>, L<Chemistry::File>,
-L<Chemistry::Tutorial>
+L<Chemistry::Pattern::Atom>, L<Chemistry::Pattern::Bond>, L<Chemistry::Mol>,
+L<Chemistry::File>
 
 =head1 AUTHOR
 
