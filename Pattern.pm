@@ -396,24 +396,17 @@ sub match_local_next {
                 }
             }
         } elsif ($$state == 3) { # Backtracking mode
-            my $fwhatb = 0;
-            do {
-                last LOOP unless @$stack > 1;
-                print "\t$d:popping stack\n" if $Debug;
-                pop @$stack;
-                $d = @$stack;
-                my $sf = $stack->[-1];
-                $where->del_attr("painted");
-                $what->map_to(undef);
-                ($from_what, $from_where, $from_what_bond_i, 
-                $from_where_bond_i) = @$sf{qw(from_what from_where 
-                    from_what_bond_i from_where_bond_i)};
-                $where = $from_where->[-1];
-                $what  = $from_what->[-1];
-                ($from_where->[-1]->bonds)[$from_where_bond_i->[-1]]->del_attr("painted");
-                $fwhatb = ($from_what->[-1]->bonds)[$from_what_bond_i->[-1]];
-            } until ($fwhatb);
-            $fwhatb->map_to(undef);
+            last unless @$stack > 1;
+            print "\t$d:popping stack\n" if $Debug;
+            pop @$stack;
+            my $sf = $stack->[-1];
+            $where->del_attr("painted");
+            $what->map_to(undef);
+            ($from_what, $from_where, $from_what_bond_i, 
+            $from_where_bond_i) = @$sf{qw(from_what from_where 
+                from_what_bond_i from_where_bond_i)};
+            ($from_where->[-1]->bonds)[$from_where_bond_i->[-1]]->del_attr("painted");
+            ($from_what->[-1]->bonds)[$from_what_bond_i->[-1]]->map_to(undef);
             ++$from_where_bond_i->[-1];
             $$state = 2;
             next;
