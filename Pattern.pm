@@ -331,6 +331,7 @@ sub match_local_next {
                 print "\t$d:atom $where matches $what\n" if $Debug;
                 $where->attr("painted", 1);
                 $what->map_to($where);
+                $stack->[-1]{paint} = 1;
                 # Now check bonds
                 $$state = 2;
                 next; #XXX
@@ -345,11 +346,16 @@ sub match_local_next {
             if (!$patt_bond) { # no more bonds to match?
                 print "\t$d:No more bonds to match at $what\n" if $Debug;
                 if (@$from_where > 1) { # go back and finish previous atom
-                    pop @$from_where_bond_i;
-                    $from_where_bond_i->[-1] = 0;
-                    pop @$from_what_bond_i;
-                    pop @$from_what;
-                    pop @$from_where;
+                    push @$stack, {
+                        from_where_bond_i => 
+                        [@$from_where_bond_i[0 .. $#$from_where_bond_i - 2],0], 
+                        from_what_bond_i => 
+                        [@$from_what_bond_i[0 .. $#$from_what_bond_i - 1]],
+                        from_where => 
+                        [@$from_where[0 .. $#$from_where - 1]], 
+                        from_what => 
+                        [@$from_what[0 .. $#$from_what - 1]],
+                    };
                     next; #XXX
                 } else {
                     $match = 1; # Finally matched! This is the deepest point
@@ -396,17 +402,26 @@ sub match_local_next {
                 }
             }
         } elsif ($$state == 3) { # Backtracking mode
-            last unless @$stack > 1;
-            print "\t$d:popping stack\n" if $Debug;
-            pop @$stack;
-            my $sf = $stack->[-1];
-            $where->del_attr("painted");
-            $what->map_to(undef);
-            ($from_what, $from_where, $from_what_bond_i, 
-            $from_where_bond_i) = @$sf{qw(from_what from_where 
-                from_what_bond_i from_where_bond_i)};
-            ($from_where->[-1]->bonds)[$from_where_bond_i->[-1]]->del_attr("painted");
-            ($from_what->[-1]->bonds)[$from_what_bond_i->[-1]]->map_to(undef);
+            my $fwhatb = 0;
+            do {
+                last LOOP unless @$stack > 1;
+                print "\t$d:popping stack\n" if $Debug;
+                pop @$stack;
+                $d = @$stack;
+                my $sf = $stack->[-1];
+                ($from_what, $from_where, $from_what_bond_i, 
+                $from_where_bond_i) = @$sf{qw(from_what from_where 
+                    from_what_bond_i from_where_bond_i)};
+                $where = $from_where->[-1];
+                $what  = $from_what->[-1];
+                if ($sf->{paint}) {
+                    $where->del_attr("painted");
+                    $what->map_to(undef);
+                }
+                ($from_where->[-1]->bonds)[$from_where_bond_i->[-1]]->del_attr("painted");
+                $fwhatb = ($from_what->[-1]->bonds)[$from_what_bond_i->[-1]];
+            } until ($fwhatb);
+            $fwhatb->map_to(undef);
             ++$from_where_bond_i->[-1];
             $$state = 2;
             next;
@@ -424,7 +439,11 @@ sub dump_stack {
     for my $sf (@$stack) {
         print "\t", $i++, "\n";
         for my $key (sort keys %$sf) {
-            print "\t\t$key: @{$sf->{$key}}\n";
+            if (ref $sf->{$key}) {
+                print "\t\t$key: @{$sf->{$key}}\n";
+            } else {
+                print "\t\t$key: $sf->{$key}\n";
+            }
         }
     }
 }
