@@ -1,5 +1,6 @@
 package Chemistry::Pattern;
-$VERSION = '0.15';
+$VERSION = '0.20';
+# $Id$
 
 =head1 NAME
 
@@ -137,22 +138,23 @@ sub new_bond {
     $self->add_bond(Chemistry::Pattern::Bond->new(@_));
 }
 
-our $Debug = 0;
+our $DEBUG = 0;
 
 sub reset {
     my ($self, @mols) = @_;
-    print "Resetting to (@mols)\n" if $Debug;
+    print "Resetting to (@mols)\n" if $DEBUG;
     $self->{pending_mols} = [@mols];
     $self->{pending_atoms} = [];
     $self->{already_matched} = {};
     $self->{current_atom} = $self->next_atom;
     $self->{paint_tab} = {};
     $self->match_local_init($self->{current_atom});
+    $self->{flat} = $self->flatten;
 }
 
 sub already_matched {
-    my ($self, @atoms) = @_;
-    my @ids = map {$_->id} @atoms;
+    my ($self, @objs) = @_;
+    my @ids = map {$_->id} @objs;
     my $unsorted_key = join " ", @ids;
     my $key;
     if ($self->{options}{permute}) {
@@ -162,11 +164,11 @@ sub already_matched {
     }
 
     if ($self->{already_matched}{$key}) {
-        print "already matched $unsorted_key\n" if $Debug;
+        print "already matched $unsorted_key\n" if $DEBUG;
         return 1;
     } else {
         $self->{already_matched}{$key} = 1;
-        print "first match of $key\n" if $Debug;
+        print "first match of $key\n" if $DEBUG;
         return 0;
     }
 }
@@ -174,17 +176,17 @@ sub already_matched {
 sub next_atom {
     my $self = shift;
     my $atom;
-    print "next_atom\n" if $Debug;
+    print "next_atom\n" if $DEBUG;
     if (@{$self->{pending_atoms}}) {
         $atom = shift @{$self->{pending_atoms}};
-        print "\tatom $atom\n" if $Debug;
+        print "\tatom $atom\n" if $DEBUG;
     } elsif (@{$self->{pending_mols}}) {
         my $mol = shift @{$self->{pending_mols}};
-        print "\tmol $mol\n" if $Debug;
+        print "\tmol $mol\n" if $DEBUG;
         $self->map_to($mol);
         $self->{pending_atoms} = [$mol->atoms];
         $atom = shift @{$self->{pending_atoms}};
-        print "\tatom $atom\n" if $Debug;
+        print "\tatom $atom\n" if $DEBUG;
     }
     $atom;
 }
@@ -230,30 +232,30 @@ methods.
 # testing a different implementation
 sub match {
     my ($self, $mol) = @_;
-    print "match $self $mol\n" if $Debug;
+    print "match $self $mol\n" if $DEBUG;
     if (defined($mol) and $self->map_to ne $mol) { #TODO
         $self->reset($mol);
     }
     my $match = $self->match_next;
-    print "returning match: '$match'\n" if $Debug;
+    print "returning match: '$match'\n" if $DEBUG;
     $match;
 }
 
 sub match_next {
     my $self = shift;
     my $match;
-    print "match_next\n" if $Debug;
+    print "match_next\n" if $DEBUG;
 
-    $self->match_local_init($self->{current_atom}) unless $self->{options}{overlap};
+    $self->match_local_init($self->{current_atom}) 
+        unless $self->{options}{overlap};
     while (1) {
-        ($match) = $self->match_local_next;
+        $match = $self->match_local_next;
         if ($match) {
-            if ($self->already_matched($self->atom_map)) {
+            if ($self->already_matched($self->atom_map, $self->bond_map)) {
                 $match = 0;
                 next; # already matched this; try again
             } else {
                 unless ($self->{options}{overlap}) {
-                    
                     $self->next_atom;
                 }
                 last; # matched!
@@ -279,183 +281,187 @@ sub match_local_init {
     };
     my $mol = $patt->map_to;
 
-    print "match_local_init(",$patt->atoms(1),", $atom)\n" if $Debug;
+    print "match_local_init(",$patt->atoms(1),", $atom)\n" if $DEBUG;
     for ($patt->atoms, $patt->bonds) { $_->map_to(undef) }
     if ($mol and $patt->{options}{overlap}) {
-        #opt: for ($mol->atoms, $mol->bonds) { $_->del_attr('painted') }
         $patt->{paint_tab} = {};
     }
     $patt->{stack} = \@stack;
     $patt->{state} = $state;
 
+    # new stuff
+    $patt->{stack2} = [[0]];
+    $patt->{backtrack} = 0;
+    $patt->{current_atom} = $atom;
 }
 
 
 sub match_local_next {
     my ($patt) = @_;
-    my $match = 0;
-    my $state = \$patt->{state};
-    my $stack = $patt->{stack};
+    my $stack = $patt->{stack2};
     my $paint_tab = $patt->{paint_tab};
+    my $match = 0;
+    my $backtrack = $patt->{backtrack};
+    my $where = $patt->{current_atom};
+    my $flat = $patt->{flat};
+    my $mol = $patt->map_to;
 
-    print "match_local_next\n" if $Debug;
+    print "match_local_next($where)\n" if $DEBUG;
 
-    LOOP: while (1) {
-        # initialize variables for this iteration
-        my $from_where = $stack->[-1]{from_where};
-        my $from_what = $stack->[-1]{from_what};
-        my $from_where_bond_i = $stack->[-1]{from_where_bond_i};
-        my $from_what_bond_i = $stack->[-1]{from_what_bond_i};
-        my $where = $from_where->[-1];
-        my $what  = $from_what->[-1];
-        my $where_bond_i = $from_where_bond_i->[-1];
-        my $what_bond_i = $from_what_bond_i->[-1];
-        my $d = @$stack;
+    while (1) {
+        my ($idx) = @{$stack->[-1]};
+        my $pos = @$stack - 1;
+        my $what = $flat->[$pos];
+        if($DEBUG) { print "[@$_] " for @$stack; print "\n" }
 
-        last unless $what;
-        print "    $$state: $what($what_bond_i),$where($where_bond_i)\n" if $Debug >= 2;
-        dump_stack($stack) if $Debug >= 3;
-
-        if ($$state == 1) {
-            if ($what->map_to) { # ring closure in pattern
-                if ($where eq $what->map_to) { # ring also closed ok in mol
-                    print "\t$d:ring closed at where: $where; what: $what; map: ",
-                        $what->map_to, "\n" if $Debug; 
-                    #continue to check bonds
-                    $$state = 2;
-                    next
-                } else {
-                    print "\t$d:ring didn't close at where: $where; what: $what; map: ",
-                        $what->map_to, "\n" if $Debug; 
-                }
-            #opt: } elsif ($where->attr("painted")) { # ring closure in mol
-            } elsif ($paint_tab->{$where->id}) { # ring closure in mol
-                print "\t$d:atom $where already visited\n" if $Debug;
-            } elsif ($what->test($where)) { ### ATOM TEST
-                print "\t$d:atom $where matches $what\n" if $Debug;
-                #opt: $where->attr("painted", 1);
-                $paint_tab->{$where->id} = 1;
+        if ($backtrack) {
+            print "\tbacktracking...\n" if $DEBUG;
+            if (@$stack <= 2) {
+                print "\tnowhere to backtrack\n" if $DEBUG;
+                last;
+            }
+            my $to;
+            pop @$stack;
+            (undef, $what, $to) = @{$stack->[-1]};
+            $backtrack = 0;
+            if ($what) {
+                print "\tcleaning $what\n" if $DEBUG;
+                $paint_tab->{$what->map_to} = 0;
+                $what->map_to(undef);
+            }
+            if ($to) {
+                print "\tcleaning $to\n" if $DEBUG;
+                $paint_tab->{$to->map_to} = 0;
+                $to->map_to(undef);
+            }
+            next;
+        } elsif ($pos >= @$flat) { # nothing else to match
+            print "\tmatched!\n" if $DEBUG;
+            $backtrack = 1;
+            $match = 1;
+            last;
+        } elsif (@$stack == 1) { # match first atom (anchored)
+            if (!$paint_tab->{$where} and $what->test($where)) {
+                print "\tmatched initial atom $what on $where\n" if $DEBUG;
+                $paint_tab->{$where} = 1;
                 $what->map_to($where);
-                $stack->[-1]{paint} = 1;
-                # Now check bonds
-                $$state = 2;
-                next; #XXX
-            } 
-            print "\t$d:atom $where does not match $what\n" if $Debug;
-            # backtrack
-            $$state = 3;
-            next; #XXX
-        } elsif ($$state == 2) {
-            ### start of match_bonds
-            my ($patt_bond) = ($what->bonds)[$what_bond_i];
-            if (!$patt_bond) { # no more bonds to match?
-                print "\t$d:No more bonds to match at $what\n" if $Debug;
-                if (@$from_where > 1) { # go back and finish previous atom
-                    push @$stack, {
-                        from_where_bond_i => 
-                        [@$from_where_bond_i[0 .. $#$from_where_bond_i - 2],0], 
-                        from_what_bond_i => 
-                        [@$from_what_bond_i[0 .. $#$from_what_bond_i - 1]],
-                        from_where => 
-                        [@$from_where[0 .. $#$from_where - 1]], 
-                        from_what => 
-                        [@$from_what[0 .. $#$from_what - 1]],
-                    };
-                    next; #XXX
-                } else {
-                    $match = 1; # Finally matched! This is the deepest point
-                    print "\t$d:Finally matched!\n" if $Debug;
-                    $$state = 3; 
-                    last;
-                } 
-            } else { # Match next bond
-                ++$from_what_bond_i->[-1], next if $patt_bond->map_to; #XXX
-                #print "\t\tnext bond; where_bond_i='$where_bond_i'\n";
-                my $mol_bond = ($where->bonds)[$where_bond_i];
-                #print "\t\tmol_bond='$mol_bond'\n";
-                if (!$mol_bond) {
-                    # no more bonds left to try; backtrack
-                    print "\t$d:no more bonds left to try at $where; backtracking\n" if $Debug;
-                    $$state = 3;
-                    next; #XXX
-                } else {
-                    #opt: ++$from_where_bond_i->[-1], next if $mol_bond->attr("painted"); #XXX
-                    ++$from_where_bond_i->[-1], next if $paint_tab->{$mol_bond->id}; #XXX
-                    if ($patt_bond->test($mol_bond)) { ### BOND TEST
-                        print "\t$d:bond $mol_bond matches $patt_bond\n" if $Debug;
+                push @$stack, [0];
+                next;
+            } else {
+                last;
+            }
+        } elsif ($what->isa("Chemistry::Pattern::Atom")) {
+            # match unanchored atom
+            if($idx >= $mol->atoms) {
+                print "\tno more atoms at $mol\n" if $DEBUG;
+                $backtrack = 1, next;
+            }
+            my $next = $mol->atoms($idx+1);
+            $stack->[-1] = [++$idx];
+            if ($paint_tab->{$next}) {
+                print "\t$next already visited\n" if $DEBUG;
+                next;
+            }
+            if ($what->test($next)) {
+                print "\tmatched unanchored atom $what on $next\n" if $DEBUG;
+                $paint_tab->{$next} = 1;
+                $what->map_to($next);
+                $stack->[-1] = [$idx, undef, $what];
+                push @$stack, [0];
+            } else {
+                print "\tunanchored atom $what didn't match $next\n" if $DEBUG;
+            }
+            next;
+        } elsif ($what->isa("Chemistry::Pattern::Bond")) { # match bond
+            my ($a1, $a2) = $what->atoms;
+            my ($from, $to) = $a1->map_to ? ($a1, $a2) : ($a2, $a1);
+            $where = $a1->map_to || $a2->map_to;
+            print "\tfrom $from to $to\n" if $DEBUG;
+            my @bn = $where->bonds_neighbors;
+            if ($idx >= @bn) {
+                print "\tno more bonds at $where\n" if $DEBUG;
+                $backtrack = 1, next;
+            }
+            my $nei  = $bn[$idx]{to};
+            my $bond = $bn[$idx]{bond};
+            $stack->[-1] = [++$idx];
 
-                        # now check the atom on the other side. First, get atom
-                        my ($patt_nei) = grep {$_ ne $what} $patt_bond->atoms;
-                        my ($mol_nei)  = grep {$_ ne $where} $mol_bond->atoms;
-                        #print "\t$d:Checking neighbor $mol_nei with $patt_nei\n" if $Debug;
-
-                        # recursive call to match atom
-                        $patt_bond->map_to($mol_bond);
-                        #opt: $mol_bond->attr("painted", 1);
-                        #opt: $where->attr("painted", 1);
-                        $paint_tab->{$mol_bond->id} = 1;
-                        $paint_tab->{$where->id}    = 1;
-                        $what->map_to($where);
-
-                        push @$stack, {
-                            from_where => [@$from_where, $mol_nei], 
-                            from_what => [@$from_what, $patt_nei],
-                            from_where_bond_i => [@$from_where_bond_i, 0], 
-                            from_what_bond_i => [@$from_what_bond_i, 0],
-                        };
-                        $$state = 1;
-                        next; #XXX
+            if ($paint_tab->{$bond}) {
+                print "\t$bond already visited\n" if $DEBUG;
+                next;
+            }
+            if ($a1->map_to and $a2->map_to) { # ring closure bond
+                if ($what->test($bond)) {
+                    print "\tmatched ring bond $what on $bond\n" if $DEBUG;
+                    if ($to->map_to eq $nei) {
+                        print "\tring closed $to on $nei\n" if $DEBUG;
+                        $paint_tab->{$bond} = 1;
+                        $what->map_to($bond);
+                        $stack->[-1] = [$idx, $what];
+                        push @$stack, [0];
+                        next;
                     } else {
-                        print "\t$d:bond $mol_bond does not match $patt_bond\n" if $Debug;
-                        ++$from_where_bond_i->[-1], next; # try next bond
+                        print "\tring didn't close $to on $nei\n" if $DEBUG;
                     }
                 }
-            }
-        } elsif ($$state == 3) { # Backtracking mode
-            my $fwhatb = 0;
-            do {
-                last LOOP unless @$stack > 1;
-                if ($stack->[-1]{paint}) {
-                    #opt: $where->del_attr("painted");
-                    $paint_tab->{$where->id} = 0;
-                    $what->map_to(undef);
+            } else {
+                if ($paint_tab->{$nei}) {
+                    print "\t$nei already visited\n" if $DEBUG;
+                    next;
                 }
-                print "\t$d:popping stack\n" if $Debug;
-                pop @$stack;
-                $d = @$stack;
-                my $sf = $stack->[-1];
-                ($from_what, $from_where, $from_what_bond_i, 
-                $from_where_bond_i) = @$sf{qw(from_what from_where 
-                    from_what_bond_i from_where_bond_i)};
-                $where = $from_where->[-1];
-                $what  = $from_what->[-1];
-                #opt: ($from_where->[-1]->bonds)[$from_where_bond_i->[-1]]->del_attr("painted");
-                $paint_tab->{($from_where->[-1]->bonds)[$from_where_bond_i->[-1]]->id} = 0;
-                $fwhatb = ($from_what->[-1]->bonds)[$from_what_bond_i->[-1]];
-            } until ($fwhatb);
-            $fwhatb->map_to(undef);
-            ++$from_where_bond_i->[-1];
-            $$state = 2;
+                if ($what->test($bond)) {
+                    print "\tmatched bond $what on $bond\n" if $DEBUG;
+                    if ($to->test($nei)) {
+                        print "\tmatched atom $to on $nei\n" if $DEBUG;
+                        $paint_tab->{$nei} = 1;
+                        $to->map_to($nei);
+                        $paint_tab->{$bond} = 1;
+                        $what->map_to($bond);
+                        $stack->[-1] = [$idx, $what, $to];
+                        push @$stack, [0];
+                        next;
+                    } else {
+                        print "\tatom $to didn't match $nei\n" if $DEBUG;
+                    }
+                } else {
+                    print "\tbond $what didn't match $bond\n" if $DEBUG;
+                }
+            }
             next;
         } else {
-            die "wrong state $$state";
+            die "shouldn't be here!";
         }
-    } 
-    print "\treturning from match_local: '$match'\n" if $Debug;
+    }
+    $patt->{backtrack} = $backtrack;
+    $patt->{stack2} = $stack;
     $match;
 }
 
-sub dump_stack {
-    my ($stack) = @_;
-    my $i = 0;
-    for my $sf (@$stack) {
-        print "\t", $i++, "\n";
-        for my $key (sort keys %$sf) {
-            if (ref $sf->{$key}) {
-                print "\t\t$key: @{$sf->{$key}}\n";
-            } else {
-                print "\t\t$key: $sf->{$key}\n";
-            }
+sub flatten {
+    my ($patt) = @_;
+    my $visited = {};
+    my $list = [];
+    for my $atom ($patt->atoms) {
+        next if $visited->{$atom};
+        push @$list, $atom;
+        _flatten($patt, $atom, $visited, $list); 
+    }
+    print "flattened list: (@$list)\n" if $DEBUG;
+    $list;
+}
+
+sub _flatten {
+    my ($patt, $atom, $visited, $list) = @_;
+
+    $visited->{$atom}  = 1;
+    for my $bn ($atom->bonds_neighbors) {
+        my $nei  = $bn->{to};
+        my $bond = $bn->{bond};
+        next if $visited->{$bond};
+        $visited->{$bond}  = 1;
+        push @$list, $bond;
+        unless ($visited->{$nei}) {
+            _flatten($patt, $nei, $visited, $list);
         }
     }
 }
@@ -466,7 +472,7 @@ sub dump_stack {
 
 =head1 VERSION
 
-0.15
+0.20
 
 =head1 SEE ALSO
 

@@ -8,15 +8,17 @@ use blib;
 use Chemistry::Pattern;
 use strict;
 use warnings;
+#use diagnostics;
 use Data::Dumper;
+use Benchmark;
 
-our $Debug ||= 0;
+our $debug ||= 0;
 our $permute ||= 0;
 our $overlap ||= 1;
 my %options = (permute => $permute, overlap => $overlap);
 
-$Chemistry::Pattern::Atom::Debug = $Debug;
-$Chemistry::Pattern::Debug = $Debug;
+#$Chemistry::Pattern::Atom::DEBUG = $debug;
+$Chemistry::Pattern::DEBUG = $debug;
 
 if (@ARGV < 2) {
     die "ptest.pl <pattern> <mol>...\n";
@@ -34,11 +36,9 @@ $patt->options(%options);
     #$where->bonds == 3 ? 1 : 0;
 #});
     
-
 for my $mol_str (@mol_strs) {
     print "Mol: $mol_str\n";
     my $mol = Chemistry::Mol->parse($mol_str, format => 'smiles');
-
 
     my @ret;
     while ($patt->match($mol) ) {
@@ -48,4 +48,15 @@ for my $mol_str (@mol_strs) {
     print "Matched: ()\n";
 }
 
+#timethis(100, \&do_test);
+
+sub do_test {
+    for my $mol_str (@mol_strs) {
+        my $mol = Chemistry::Mol->parse($mol_str, format => 'smiles');
+        my @ret;
+        while ($patt->match($mol) ) {
+            @ret = $patt->atom_map;
+        }
+    }
+}
 

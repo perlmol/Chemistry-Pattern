@@ -5,7 +5,7 @@ use strict;
 my @files;
 
 BEGIN { 
-    eval "use Chemistry::File::SMILES";
+    eval "use Chemistry::File::SMILES 0.32";
     @files = glob "t/*.pat" unless $@;
     plan tests => 1 + @files;
     use_ok('Chemistry::Pattern');
