@@ -1,12 +1,8 @@
-Revision history for Perl extension Chemistry::Mol.
+Revision history for Perl extension Chemistry::Pattern.
 
-0.06  Fri Sep 26
-        - New methods for Chemistry::Mol
-            - atoms()
-            - bonds()
-            - by_id()
-            - atoms_by_name()
+0.15  07 May 2004
+        - Some optimizations (most notable when doing a global match on a large
+          molecule) and improved encapsulation
 
-0.05  Tue Sep 23 2003
-	- First release
-
+0.10  27 Feb 2004
+        - First release

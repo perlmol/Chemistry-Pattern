@@ -1,5 +1,5 @@
 package Chemistry::Pattern;
-$VERSION = '0.10';
+$VERSION = '0.15';
 
 =head1 NAME
 
@@ -146,6 +146,7 @@ sub reset {
     $self->{pending_atoms} = [];
     $self->{already_matched} = {};
     $self->{current_atom} = $self->next_atom;
+    $self->{paint_tab} = {};
     $self->match_local_init($self->{current_atom});
 }
 
@@ -281,7 +282,8 @@ sub match_local_init {
     print "match_local_init(",$patt->atoms(1),", $atom)\n" if $Debug;
     for ($patt->atoms, $patt->bonds) { $_->map_to(undef) }
     if ($mol and $patt->{options}{overlap}) {
-        for ($mol->atoms, $mol->bonds) { $_->del_attr('painted') }
+        #opt: for ($mol->atoms, $mol->bonds) { $_->del_attr('painted') }
+        $patt->{paint_tab} = {};
     }
     $patt->{stack} = \@stack;
     $patt->{state} = $state;
@@ -294,6 +296,7 @@ sub match_local_next {
     my $match = 0;
     my $state = \$patt->{state};
     my $stack = $patt->{stack};
+    my $paint_tab = $patt->{paint_tab};
 
     print "match_local_next\n" if $Debug;
 
@@ -325,11 +328,13 @@ sub match_local_next {
                     print "\t$d:ring didn't close at where: $where; what: $what; map: ",
                         $what->map_to, "\n" if $Debug; 
                 }
-            } elsif ($where->attr("painted")) { # ring closure in mol
+            #opt: } elsif ($where->attr("painted")) { # ring closure in mol
+            } elsif ($paint_tab->{$where->id}) { # ring closure in mol
                 print "\t$d:atom $where already visited\n" if $Debug;
             } elsif ($what->test($where)) { ### ATOM TEST
                 print "\t$d:atom $where matches $what\n" if $Debug;
-                $where->attr("painted", 1);
+                #opt: $where->attr("painted", 1);
+                $paint_tab->{$where->id} = 1;
                 $what->map_to($where);
                 $stack->[-1]{paint} = 1;
                 # Now check bonds
@@ -365,14 +370,17 @@ sub match_local_next {
                 } 
             } else { # Match next bond
                 ++$from_what_bond_i->[-1], next if $patt_bond->map_to; #XXX
+                #print "\t\tnext bond; where_bond_i='$where_bond_i'\n";
                 my $mol_bond = ($where->bonds)[$where_bond_i];
+                #print "\t\tmol_bond='$mol_bond'\n";
                 if (!$mol_bond) {
                     # no more bonds left to try; backtrack
                     print "\t$d:no more bonds left to try at $where; backtracking\n" if $Debug;
                     $$state = 3;
                     next; #XXX
                 } else {
-                    ++$from_where_bond_i->[-1], next if $mol_bond->attr("painted"); #XXX
+                    #opt: ++$from_where_bond_i->[-1], next if $mol_bond->attr("painted"); #XXX
+                    ++$from_where_bond_i->[-1], next if $paint_tab->{$mol_bond->id}; #XXX
                     if ($patt_bond->test($mol_bond)) { ### BOND TEST
                         print "\t$d:bond $mol_bond matches $patt_bond\n" if $Debug;
 
@@ -383,8 +391,10 @@ sub match_local_next {
 
                         # recursive call to match atom
                         $patt_bond->map_to($mol_bond);
-                        $mol_bond->attr("painted", 1);
-                        $where->attr("painted", 1);
+                        #opt: $mol_bond->attr("painted", 1);
+                        #opt: $where->attr("painted", 1);
+                        $paint_tab->{$mol_bond->id} = 1;
+                        $paint_tab->{$where->id}    = 1;
                         $what->map_to($where);
 
                         push @$stack, {
@@ -406,7 +416,8 @@ sub match_local_next {
             do {
                 last LOOP unless @$stack > 1;
                 if ($stack->[-1]{paint}) {
-                    $where->del_attr("painted");
+                    #opt: $where->del_attr("painted");
+                    $paint_tab->{$where->id} = 0;
                     $what->map_to(undef);
                 }
                 print "\t$d:popping stack\n" if $Debug;
@@ -418,7 +429,8 @@ sub match_local_next {
                     from_what_bond_i from_where_bond_i)};
                 $where = $from_where->[-1];
                 $what  = $from_what->[-1];
-                ($from_where->[-1]->bonds)[$from_where_bond_i->[-1]]->del_attr("painted");
+                #opt: ($from_where->[-1]->bonds)[$from_where_bond_i->[-1]]->del_attr("painted");
+                $paint_tab->{($from_where->[-1]->bonds)[$from_where_bond_i->[-1]]->id} = 0;
                 $fwhatb = ($from_what->[-1]->bonds)[$from_what_bond_i->[-1]];
             } until ($fwhatb);
             $fwhatb->map_to(undef);
@@ -452,14 +464,16 @@ sub dump_stack {
 
 =back
 
-=head1 BUGS
+=head1 VERSION
 
-Doesn't work properly for disconnected patterns.
+0.15
 
 =head1 SEE ALSO
 
 L<Chemistry::Pattern::Atom>, L<Chemistry::Pattern::Bond>, L<Chemistry::Mol>,
 L<Chemistry::File>
+
+The PerlMol website L<http://www.perlmol.org/>
 
 =head1 AUTHOR
 

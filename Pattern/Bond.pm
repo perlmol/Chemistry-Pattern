@@ -1,5 +1,5 @@
 package Chemistry::Pattern::Bond;
-$VERSION = '0.10';
+$VERSION = '0.15';
 
 =head1 NAME
 
@@ -68,15 +68,32 @@ Returns or sets the bond that is considered to be matched by $patt_bond.
 
 =cut
 
-Chemistry::Obj::accessor('map_to');
+#Chemistry::Obj::accessor('map_to');
+sub map_to {
+    my $self = shift;
+    if (@_) {
+        #print "\t\tmapping $self to '@_'\n";
+        ($self->{map_to}) = @_;
+        $self;
+    } else {
+        #print "\t\t$self is mapped to '$self->{map_to}'\n";
+        $self->{map_to};
+    }
+}
 
 1;
 
 =back
 
+=head1 VERSION
+
+0.15
+
 =head1 SEE ALSO
 
 L<Chemistry::Pattern>
+
+The PerlMol website L<http://www.perlmol.org/>
 
 =head1 AUTHOR
 

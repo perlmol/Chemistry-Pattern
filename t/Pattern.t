@@ -1,14 +1,13 @@
 use Test::More;
-use Chemistry::File::SMILES;
 use Chemistry::Mol;
 use strict;
 
 my @files;
 
 BEGIN { 
-    @files = glob "t/*.pat";
+    eval "use Chemistry::File::SMILES";
+    @files = glob "t/*.pat" unless $@;
     plan tests => 1 + @files;
-
     use_ok('Chemistry::Pattern');
 };
 

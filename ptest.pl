@@ -29,10 +29,10 @@ print "Options: ", join(" ", %options), "\n";
 
 my $patt = Chemistry::Pattern->parse($patt_str, format => 'smiles');
 $patt->options(%options);
-$patt->atoms(1)->test_sub(sub{
-    my ($what, $where) = @_;
-    $where->bonds == 3 ? 1 : 0;
-});
+#$patt->atoms(1)->test_sub(sub{
+    #my ($what, $where) = @_;
+    #$where->bonds == 3 ? 1 : 0;
+#});
     
 
 for my $mol_str (@mol_strs) {

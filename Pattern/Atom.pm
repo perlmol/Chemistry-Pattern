@@ -1,5 +1,5 @@
 package Chemistry::Pattern::Atom;
-$VERSION = '0.10';
+$VERSION = '0.15';
 
 =head1 NAME
 
@@ -46,10 +46,14 @@ false.
 
 sub test {
     my ($what, $where) = @_;
+    #print "\t\ttesting $where against $what\n";
+    #print $where->print, $what->print;
     if ($what->test_sub) {
-         return $what->test_sub->($what, $where);
+        #print "\t\thave a test sub\n";
+        return $what->test_sub->($what, $where);
     } else {
-         return $what->symbol eq $where->symbol;
+        #print "\t\tdon't have a test sub\n";
+        return $what->symbol eq $where->symbol;
     }
 }
 
@@ -76,9 +80,15 @@ Chemistry::Obj::accessor('map_to');
 
 =back
 
+=head1 VERSION
+
+0.15
+
 =head1 SEE ALSO
 
 L<Chemistry::Pattern>
+
+The PerlMol website L<http://www.perlmol.org/>
 
 =head1 AUTHOR
 
