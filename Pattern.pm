@@ -405,6 +405,10 @@ sub match_local_next {
             my $fwhatb = 0;
             do {
                 last LOOP unless @$stack > 1;
+                if ($stack->[-1]{paint}) {
+                    $where->del_attr("painted");
+                    $what->map_to(undef);
+                }
                 print "\t$d:popping stack\n" if $Debug;
                 pop @$stack;
                 $d = @$stack;
@@ -414,10 +418,6 @@ sub match_local_next {
                     from_what_bond_i from_where_bond_i)};
                 $where = $from_where->[-1];
                 $what  = $from_what->[-1];
-                if ($sf->{paint}) {
-                    $where->del_attr("painted");
-                    $what->map_to(undef);
-                }
                 ($from_where->[-1]->bonds)[$from_where_bond_i->[-1]]->del_attr("painted");
                 $fwhatb = ($from_what->[-1]->bonds)[$from_what_bond_i->[-1]];
             } until ($fwhatb);
