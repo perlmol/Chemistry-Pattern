@@ -22,6 +22,7 @@ use base qw(Chemistry::Bond);
 =cut
 
 
+Chemistry::Obj::accessor('map_to');
 
 
 

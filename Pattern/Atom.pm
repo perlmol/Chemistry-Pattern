@@ -48,7 +48,7 @@ sub match {
     print "match_atom -- where: $where; what: $what; ",
         "from_where: [@$from_where]; from_what: [@$from_what];\n" if $Debug;
     
-    if ($what->attr("painted")) { # ring closure in pattern
+    if ($what->map_to) { # ring closure in pattern
         if ($where == $what->map_to) { # ring also closed ok in mol
             print "\tring closed at where: $where; what: $what; map: ",
                 $what->map_to, "\n" if $Debug; 
@@ -64,11 +64,9 @@ sub match {
 
         # Now check bonds
         $where->attr("painted", 1);
-        $what->attr("painted", 1); # this is kind of redundant. map_to should be enough
         $what->map_to($where);
         ($match, @ret) = $what->match_bonds(@_); # continue with same params
-        $what->attr("painted", 0);
-        $where->attr("painted", 0);
+        $where->del_attr("painted");
 
         unshift @ret, $where if $match;
     } else {
@@ -88,7 +86,7 @@ sub match_bonds {
     print "match_bonds -- where: $where; what: $what; ",
         "from_where: [@$from_where]; from_what: [@$from_what];\n" if $Debug;
 
-    my ($patt_bond) = grep {! $_->attr("painted")} $what->bonds;
+    my ($patt_bond) = grep {! $_->map_to} $what->bonds;
     if (!$patt_bond) { # no more bonds to match?
         print "\tNo more bonds to match at $what\n" if $Debug;
         if (@$from_where) { # go back and finish previous atom
@@ -113,7 +111,7 @@ sub match_bonds {
                 print "\tChecking neighbor $mol_nei with $patt_nei\n" if $Debug;
 
                 # recursive call to match atom
-                $patt_bond->attr("painted", 1);
+                $patt_bond->map_to($mol_bond);
                 $mol_bond->attr("painted", 1);
                 push @$from_where, $where;
                 push @$from_what, $what;
@@ -121,8 +119,7 @@ sub match_bonds {
                     where=>$mol_nei, 
                     from_where=>$from_where, from_what=>$from_what
                 );
-                $patt_bond->attr("painted", 0);
-                $mol_bond->attr("painted", 0);
+                $mol_bond->del_attr("painted");
 
                 last if $match; 
                 # should continue here if we wanted overlapping matches

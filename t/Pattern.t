@@ -24,7 +24,11 @@ for my $file (@files) {
     $mol_parser->parse($mol_str, $mol = Chemistry::Mol->new);
     $mol_parser->parse($patt_str, $patt = Chemistry::Pattern->new);
 
-    my @ret = $patt->match_first($mol);
+    my @ret;
+    if ($patt->match($mol) ) {
+        @ret = $patt->atom_map;
+    }
+
     my $match = "(@ret)";
     is ($match, $expected_match, "$mol_str =~ $patt_str");
 }

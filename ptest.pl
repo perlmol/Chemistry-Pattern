@@ -11,20 +11,29 @@ use Data::Dumper;
 our $Debug ||= 0;
 $Chemistry::Pattern::Atom::Debug = $Debug;
 
-my $mol_str = $ARGV[0] || "CCCC";
-my $patt_str = $ARGV[1] || "CC";
+if (@ARGV < 2) {
+    die "ptest.pl <pattern> <mol>...\n";
+}
 
-print "Mol: $mol_str\nPattern: $patt_str\n";
+my ($patt_str, @mol_strs) = @ARGV;
+
+print "Pattern: $patt_str\n";
 
 my $mol_parser = new Chemistry::Smiles();
 my ($mol, $patt);
 
-$mol_parser->parse($mol_str, $mol = Chemistry::Mol->new);
 $mol_parser->parse($patt_str, $patt = Chemistry::Pattern->new);
 
-my @ret;
+for my $mol_str (@mol_strs) {
+    print "Mol: $mol_str\n";
+    $mol_parser->parse($mol_str, $mol = Chemistry::Mol->new);
 
-#$patt->atoms(1)->test_sub(sub{1});
-@ret = $patt->match_first($mol);
-print "Matched: (@ret)\n";
+    my @ret;
+    while ($patt->match($mol) ) {
+        @ret = $patt->atom_map;
+        print "Matched: (@ret)\n";
+    }
+
+}
+
 

@@ -26,18 +26,17 @@ use Chemistry::Pattern::Bond;
 
 =cut
 
-# so far, inherit and do nothing...
 sub new {
     my $class = shift;
-    $class->SUPER::new(@_);
+    my $self = $class->SUPER::new(@_);
+    $self->reset;
+    $self;
 }
 
 
 =item $mol->new_atom(name => value, ...)
 
 Shorthand for $mol->add_atom(Chemistry::Atom->new(name => value, ...));
-It has the disadvantage that it doesn't let you create a subclass of 
-Chemistry::Atom.
 
 =cut
 
@@ -50,8 +49,6 @@ sub new_atom {
 =item $mol->new_bond(name => value, ...)
 
 Shorthand for $mol->add_bond(Chemistry::Bond->new(name => value, ...));
-It has the disadvantage that it doesn't let you create a subclass of 
-Chemistry::Atom.
 
 =cut
 
@@ -62,46 +59,95 @@ sub new_bond {
 
 our $Debug = 0;
 
-sub match_any {
+sub reset {
+    my ($self, @mols) = @_;
+    print "Resetting to (@mols)\n" if $Debug;
+    $self->{pending_mols} = [@mols];
+    $self->{pending_atoms} = [];
+    $self->{already_matched} = {};
+}
 
+sub already_matched {
+    my ($self, $key) = @_;
+    if ($self->{already_matched}{$key}) {
+        print "already matched $key\n" if $Debug;
+        return 1;
+    } else {
+        $self->{already_matched}{$key} = 1;
+        print "first match of $key\n" if $Debug;
+        return 0;
+    }
+}
+
+sub next_atom {
+    my $self = shift;
+    my $atom;
+    print "next_atom\n" if $Debug;
+    if (@{$self->{pending_atoms}}) {
+        $atom = shift @{$self->{pending_atoms}};
+        print "\tatom $atom\n" if $Debug;
+    } elsif (@{$self->{pending_mols}}) {
+        my $mol = shift @{$self->{pending_mols}};
+        print "\tmol $mol\n" if $Debug;
+        $self->map_to($mol);
+        $self->{pending_atoms} = [$mol->atoms];
+        $atom = shift @{$self->{pending_atoms}};
+        print "\tatom $atom\n" if $Debug;
+    }
+    $atom;
+}
+
+Chemistry::Obj::accessor "map_to";
+
+sub match {
+    my ($self, $mol) = @_;
+    print "match $self $mol\n" if $Debug;
+    if (defined($mol) and $self->map_to != $mol) {
+        $self->reset($mol);
+    }
+    my $match = $self->match_next;
+    print "returning match: '$match'\n" if $Debug;
+    $match;
 }
 
 sub match_next {
-
-}
-
-sub match_all {
-    my ($patt, $mol) = @_;
-    print "first_match: $mol with $patt\n" if $Debug;
-    my @ret;
-    for my $atom ($mol->atoms) {
-        my @match = $patt->match_local($atom);
-        push @ret, \@match if @match;
+    my $self = shift;
+    my $match;
+    print "match_next\n" if $Debug;
+    while (my $atom = $self->next_atom) {
+        ($match) = $self->match_local($atom);
+        if ($match) {
+            my $match_key = join " ", sort map {$_->id} $self->atom_map;
+            if ($self->already_matched($match_key)) {
+                $match = 0;
+                next;
+            } else {
+                last;
+            }
+        }
     }
-    @ret;
-}
-
-sub match_first {
-    my ($patt, $mol) = @_;
-    print "first_match: $mol with $patt\n" if $Debug;
-    my @ret;
-    for my $atom ($mol->atoms) {
-        @ret = $patt->match_local($atom);
-        last if @ret;
-    }
-    @ret;
+    $match;
 }
 
 sub match_local {
     my ($patt, $atom) = @_;
     print "local_match: $atom with $patt\n" if $Debug;
-    my ($match, @ret) = $patt->atoms(1)->match(
+    for ($patt->atoms, $patt->bonds) { $_->map_to(undef) }
+    $patt->atoms(1)->match(
         where => $atom,
-        #what => $patt->atoms(1),
         from_where => [],
         from_what => [],
     );
-    return @ret;
+}
+
+sub atom_map {
+    my $self = shift;
+    map { $_->map_to } $self->atoms(@_);
+}
+
+sub bond_map {
+    my $self = shift;
+    map { $_->map_to } $self->bonds(@_);
 }
 
 1;
