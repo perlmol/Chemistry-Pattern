@@ -3,7 +3,7 @@ Chemistry/Pattern version 0.01
 
 This module implements a generic molecule pattern matching engine.
 
-todo:
+TODO:
     extract atom and bond tests to methods in the corresponding classes
     allow user-defined test subroutines
     add positive and negative look-ahead

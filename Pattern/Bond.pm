@@ -30,7 +30,7 @@ sub test {
     if ($what->test_sub) {
          return $what->test_sub->($what, $where);
     } else {
-         return $what->type eq $where->type;
+         return $what->order eq $where->order;
     }
 }
 

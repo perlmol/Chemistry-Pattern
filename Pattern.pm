@@ -200,7 +200,8 @@ Returns the list of atoms that matched the last time $pattern->match was called.
 
 sub atom_map {
     my $self = shift;
-    map { $_->map_to } $self->atoms(@_);
+    my @atoms = map { $_->map_to } $self->atoms(@_);
+    @atoms == 1 ? $atoms[0] : @atoms;
 }
 
 =item $pattern->bond_map
@@ -211,7 +212,8 @@ Returns the list of bonds that matched the last time $pattern->match was called.
 
 sub bond_map {
     my $self = shift;
-    map { $_->map_to } $self->bonds(@_);
+    my @bonds = map { $_->map_to } $self->bonds(@_);
+    @bonds == 1 ? $bonds[0] : @bonds;
 }
 
 =item $pattern->match($mol)
