@@ -17,18 +17,20 @@ my $mol_parser = new Chemistry::Smiles();
 
 for my $file (@files) {
     open F, $file or die "couldn't open $file\n";   
-    my ($mol_str, $patt_str, $expected_match) = map { /: ([^\n\r]*)/g } <F>;
+    my ($patt_str, $options, $mol_str, @expected_matches) = map { /: ([^\n\r]*)/g } <F>;
     
     my ($mol, $patt);
     Chemistry::Atom->reset_id;
-    $mol_parser->parse($mol_str, $mol = Chemistry::Mol->new);
     $mol_parser->parse($patt_str, $patt = Chemistry::Pattern->new);
+    $mol_parser->parse($mol_str, $mol = Chemistry::Mol->new);
+    $patt->options(split " ", $options);
 
-    my @ret;
-    if ($patt->match($mol) ) {
-        @ret = $patt->atom_map;
+    my @matches;
+    while ($patt->match($mol) ) {
+        my @ret = $patt->atom_map;
+        push @matches, "(@ret)";
     }
+    push @matches, "()";
 
-    my $match = "(@ret)";
-    is ($match, $expected_match, "$mol_str =~ $patt_str");
+    is_deeply(\@matches, \@expected_matches, "$file: $mol_str =~ /$patt_str/");
 }

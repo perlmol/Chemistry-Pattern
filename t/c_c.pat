@@ -1,4 +1,5 @@
-Pattern: C1CC1
+Pattern: C
 Options: permute 1 overlap 1
-Mol: CCCC
+Mol: C
+Matched: (a2)
 Matched: ()

@@ -1,3 +1,5 @@
-Mol: C(CC)O
 Pattern: C(CC)O
-Matched: (a1 a2 a3 a4)
+Options: permute 1 overlap 1
+Mol: C(CC)O
+Matched: (a5 a6 a7 a8)
+Matched: ()
