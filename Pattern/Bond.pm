@@ -1,5 +1,5 @@
 package Chemistry::Pattern::Bond;
-$VERSION = '0.01';
+$VERSION = '0.10';
 
 =head1 NAME
 
@@ -7,7 +7,20 @@ Chemistry::Pattern::Bond
 
 =head1 SYNOPSIS
 
+    my $patt_bond = Chemistry::Pattern::Bond->new(order => 2);
+    $patt_bond->test_sub( sub {
+        my ($what, $where) = @_; 
+        $where->type eq 'purple' ? 1 : 0; # only match purple bonds
+    });
+
 =head1 DESCRIPTION
+
+Objects of this class represent bonds in a pattern. This is a subclass of
+Chemistry::Bond. In addition to the properties of regular bonds, 
+pattern bonds have a method for testing if they match an bond in a molecule.
+By default, a pattern bond matches an bond if they have the same bond order.
+It is possible to substitute this by an arbitrary criterion by providing
+a custom test subroutine.
 
 =cut
 
@@ -21,9 +34,12 @@ use base qw(Chemistry::Bond);
 
 =cut
 
+=item $patt_bond->test($bond)
 
-Chemistry::Obj::accessor('map_to');
-Chemistry::Obj::accessor('test_sub');
+Tests if the pattern bond matches the bond given by $bond. Returns true or
+false.
+
+=cut
 
 sub test {
     my ($what, $where) = @_;
@@ -35,13 +51,32 @@ sub test {
 }
 
 
+
+=item $patt_bond->test_sub(\&my_test_sub)
+
+Specify an arbitrary test subroutine to be used instead of the default one.
+&my_test_sub must take two parameters; the first one is the pattern bond 
+and the second is the bond to match. It must return true if there is a match.
+
+=cut
+
+Chemistry::Obj::accessor('test_sub');
+
+=item $patt_bond->map_to([$bond])
+
+Returns or sets the bond that is considered to be matched by $patt_bond.
+
+=cut
+
+Chemistry::Obj::accessor('map_to');
+
 1;
 
 =back
 
 =head1 SEE ALSO
 
-L<Chemistry::Mol>, L<Chemistry::Atom>, L<Chemistry::Tutorial>
+L<Chemistry::Pattern>
 
 =head1 AUTHOR
 
@@ -49,7 +84,7 @@ Ivan Tubert E<lt>itub@cpan.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2003 Ivan Tubert. All rights reserved. This program is free
+Copyright (c) 2004 Ivan Tubert. All rights reserved. This program is free
 software; you can redistribute it and/or modify it under the same terms as
 Perl itself.
 

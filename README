@@ -1,13 +1,8 @@
-Chemistry/Pattern version 0.01
+Chemistry/Pattern version 0.10
 ==============================
 
-This module implements a generic molecule pattern matching engine.
-
-TODO:
-    extract atom and bond tests to methods in the corresponding classes
-    allow user-defined test subroutines
-    add positive and negative look-ahead
-    consider adding * and +
+This module implements a generic molecule pattern matching engine. In other
+words, a sort of "regular expressions for molecules".
 
 INSTALLATION
 
@@ -25,7 +20,7 @@ This module requires these other modules and libraries:
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2003 Ivan Tubert <itub@cpan.org>
+Copyright (C) 2004 Ivan Tubert <itub@cpan.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself. 

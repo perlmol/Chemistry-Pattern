@@ -1,5 +1,5 @@
 package Chemistry::Pattern;
-$VERSION = '0.01';
+$VERSION = '0.10';
 
 =head1 NAME
 
@@ -9,15 +9,13 @@ Chemistry::Pattern - Chemical substructure pattern matching
 
     use Chemistry::Pattern;
     use Chemistry::Mol;
-    use Chemistry::Smiles;
+    use Chemistry::File::SMILES;
 
     # Create a pattern and a molecule from SMILES strings
     my $mol_str = "C1CCCC1C(Cl)=O";
     my $patt_str = "C(=O)Cl";
-    my $mol_parser = new Chemistry::Smiles();
-    my ($patt, $mol);
-    $mol_parser->parse($mol_str, $mol = Chemistry::Mol->new);
-    $mol_parser->parse($patt_str, $patt = Chemistry::Pattern->new);
+    my $mol = Chemistry::Mol->parse($mol_str, format => 'smiles');
+    my $patt = Chemistry::Pattern->parse($patt_str, format => 'smiles');
 
     # try to match the pattern
     while ($patt->match($mol)) {
@@ -469,7 +467,7 @@ Ivan Tubert E<lt>itub@cpan.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2003 Ivan Tubert. All rights reserved. This program is free
+Copyright (c) 2004 Ivan Tubert. All rights reserved. This program is free
 software; you can redistribute it and/or modify it under the same terms as
 Perl itself.
 
