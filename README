@@ -1,0 +1,31 @@
+Chemistry/Pattern version 0.01
+==============================
+
+This module implements a generic molecule pattern matching engine.
+
+todo:
+    extract atom and bond tests to methods in the corresponding classes
+    allow user-defined test subroutines
+    add atom and bond mapping from patt to mol
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+DEPENDENCIES
+
+This module requires these other modules and libraries:
+    - Chemistry::Mol
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2003 Ivan Tubert <itub@cpan.org>
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself. 
+

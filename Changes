@@ -1,0 +1,12 @@
+Revision history for Perl extension Chemistry::Mol.
+
+0.06  Fri Sep 26
+        - New methods for Chemistry::Mol
+            - atoms()
+            - bonds()
+            - by_id()
+            - atoms_by_name()
+
+0.05  Tue Sep 23 2003
+	- First release
+
