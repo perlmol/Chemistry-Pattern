@@ -23,7 +23,16 @@ use base qw(Chemistry::Bond);
 
 
 Chemistry::Obj::accessor('map_to');
+Chemistry::Obj::accessor('test_sub');
 
+sub test {
+    my ($what, $where) = @_;
+    if ($what->test_sub) {
+         return $what->test_sub->($what, $where);
+    } else {
+         return $what->type eq $where->type;
+    }
+}
 
 
 1;

@@ -373,7 +373,7 @@ sub match_local_next {
                     next; #XXX
                 } else {
                     ++$from_where_bond_i->[-1], next if $mol_bond->attr("painted"); #XXX
-                    if ($patt_bond->type eq $mol_bond->type) { ### BOND TEST
+                    if ($patt_bond->test($mol_bond)) { ### BOND TEST
                         print "\t$d:bond $mol_bond matches $patt_bond\n" if $Debug;
 
                         # now check the atom on the other side. First, get atom
@@ -451,6 +451,10 @@ sub dump_stack {
 1;
 
 =back
+
+=head1 BUGS
+
+Doesn't work properly for disconnected patterns.
 
 =head1 SEE ALSO
 
