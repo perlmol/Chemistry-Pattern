@@ -15,6 +15,7 @@ use Benchmark;
 our $debug ||= 0;
 our $permute ||= 0;
 our $overlap ||= 1;
+our $anchor;
 my %options = (permute => $permute, overlap => $overlap);
 
 #$Chemistry::Pattern::Atom::DEBUG = $debug;
@@ -28,6 +29,7 @@ my ($patt_str, @mol_strs) = @ARGV;
 
 print "Pattern: $patt_str\n";
 print "Options: ", join(" ", %options), "\n";
+print "Anchor: ", $anchor || '', "\n";
 
 my $patt = Chemistry::Pattern->parse($patt_str, format => 'smiles');
 $patt->options(%options);
@@ -41,7 +43,9 @@ for my $mol_str (@mol_strs) {
     my $mol = Chemistry::Mol->parse($mol_str, format => 'smiles');
 
     my @ret;
-    while ($patt->match($mol) ) {
+    my $atom;
+    $atom = $mol->atoms($anchor) if $anchor;
+    while ($patt->match($mol, atom => $atom) ) {
         @ret = $patt->atom_map;
         print "Matched: (@ret)\n";
     }

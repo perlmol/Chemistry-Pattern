@@ -1,12 +1,13 @@
-Chemistry/Pattern version 0.21
+Chemistry/Pattern version 0.25
 ==============================
 
 This module implements a generic molecule pattern matching engine. In other
 words, a sort of "regular expressions for molecules". This module is part of
 the PerlMol project, http://www.perlmol.org/.
 
-Changes since version 0.20
-        - Added atom_class and bond_class methods to Pattern.pm.
+Changes since version 0.21
+        - Allow anchored matches: extended match interface.
+        - Document reset method.
 
 INSTALLATION
 
@@ -28,7 +29,7 @@ The following modules are required only for the tests:
 
 COPYRIGHT AND LICENSE
 
-Copyright (C) 2004 Ivan Tubert <itub@cpan.org>
+Copyright (C) 2004 Ivan Tubert-Brohman <itub@cpan.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself. 

@@ -8,6 +8,7 @@ README
 t/1.pat
 t/2.pat
 t/Pattern.t
+t/anchor1.pat
 t/btatom.pat
 t/btbond.pat
 t/c.pat

@@ -1,5 +1,5 @@
 package Chemistry::Pattern;
-$VERSION = '0.21';
+$VERSION = '0.25';
 # $Id$
 
 =head1 NAME
@@ -77,9 +77,11 @@ options themselves are described under the options() method).
 
 sub new {
     my $class = shift;
-    my $self = $class->SUPER::new(@_);
+    my $self = $class->SUPER::new(
+        options => { overlap => 1, permute => 0}, 
+        @_
+    );
     $self->reset;
-    $self->{options} = {overlap=>1, permute=>0};
     $self;
 }
 
@@ -109,28 +111,35 @@ For example, the CC pattern could match ethane with two different permutations
 sub options {
     my $self = shift;
     if (@_ == 1) {
-        $self->{options} = {%{$self->{options}}, %{$_[0]}};
+        $self->{options} = {%{$self->{options}||{}}, %{$_[0]}};
     } else {
         $self->{options} = {%{$self->{options}}, @_};
     }
 }
 
-sub atom_class { "Chemistry::Pattern::Atom"; }
+sub atom_class { "Chemistry::Pattern::Atom" }
 
-sub bond_class { "Chemistry::Pattern::Bond"; }
+sub bond_class { "Chemistry::Pattern::Bond" }
 
 our $DEBUG = 0;
 
+=item $patt->reset
+
+Reset the state of the pattern matching object, so that it begins the next
+match from scratch instead of where it left off after the last one.
+
+=cut
+
 sub reset {
-    my ($self, @mols) = @_;
-    print "Resetting to (@mols)\n" if $DEBUG;
-    $self->{pending_mols} = [@mols];
-    $self->{pending_atoms} = [];
-    $self->{already_matched} = {};
-    $self->{current_atom} = $self->next_atom;
-    $self->{paint_tab} = {};
-    $self->match_local_init($self->{current_atom});
+    my ($self, $mol, %opts) = @_;
+    print "Resetting to ($mol, $opts{atom})\n" if $DEBUG;
     $self->{flat} = $self->flatten;
+    $self->map_to($mol);
+    $self->{pending_atoms} = [$mol ? $mol->atoms : ()];
+    $self->{already_matched} = {};
+    $self->{paint_tab} = {};
+    $self->{anchor} = '';
+    $self->next_atom($opts{atom});
 }
 
 sub already_matched {
@@ -155,20 +164,27 @@ sub already_matched {
 }
 
 sub next_atom {
-    my $self = shift;
-    my $atom;
+    my ($self, $atom) = @_;
+
     print "next_atom\n" if $DEBUG;
-    if (@{$self->{pending_atoms}}) {
+    return if $self->{anchor};
+    if ($atom) {
+        $self->{anchor} = $atom;
+    } elsif (@{$self->{pending_atoms}}) {
         $atom = shift @{$self->{pending_atoms}};
         print "\tatom $atom\n" if $DEBUG;
-    } elsif (@{$self->{pending_mols}}) {
-        my $mol = shift @{$self->{pending_mols}};
-        print "\tmol $mol\n" if $DEBUG;
-        $self->map_to($mol);
-        $self->{pending_atoms} = [$mol->atoms];
-        $atom = shift @{$self->{pending_atoms}};
-        print "\tatom $atom\n" if $DEBUG;
-    }
+    } 
+    
+#    elsif (@{$self->{pending_mols}}) {
+#        my $mol = shift @{$self->{pending_mols}};
+#        print "\tmol $mol\n" if $DEBUG;
+#        $self->map_to($mol);
+#        $self->{pending_atoms} = [$mol->atoms];
+#        $atom = shift @{$self->{pending_atoms}};
+#        print "\tatom $atom\n" if $DEBUG;
+#    }
+
+    $self->match_local_init($atom) if $atom;
     $atom;
 }
 
@@ -198,26 +214,33 @@ sub bond_map {
     @bonds == 1 ? $bonds[0] : @bonds;
 }
 
-=item $pattern->match($mol)
+=item $pattern->match($mol, %options)
 
 Returns true if the pattern matches the molecule. If called again for the 
 same molecule, continues matching where it left off (in a way similar to global
 regular expressions under scalar context). When there are no matches left,
 returns false.
 
+    $pattern->match($mol, atom => $atom)
+
+If atom => $atom is given as an option, match will only look for matches that
+start at $atom (which should be an atom in $mol, of course). This is somewhat
+analog to anchored regular expressions.
+
 To find out which atoms and bonds matched, use the atom_map and bond_map
 methods.
 
 =cut
 
-# testing a different implementation
 sub match {
-    my ($self, $mol) = @_;
+    my ($self, $mol, %opts) = @_;
     print "match $self $mol\n" if $DEBUG;
-    if (defined($mol) and $self->map_to ne $mol) { #TODO
-        $self->reset($mol);
+    if (defined($mol) and $self->map_to ne $mol 
+        or defined($opts{atom}) and $opts{atom} ne $self->{anchor}) { 
+        $self->reset($mol, %opts);
     }
     my $match = $self->match_next;
+    $self->map_to(undef) unless $match;
     print "returning match: '$match'\n" if $DEBUG;
     $match;
 }
@@ -227,24 +250,17 @@ sub match_next {
     my $match;
     print "match_next\n" if $DEBUG;
 
-    $self->match_local_init($self->{current_atom}) 
-        unless $self->{options}{overlap};
     while (1) {
         $match = $self->match_local_next;
         if ($match) {
             if ($self->already_matched($self->atom_map, $self->bond_map)) {
-                $match = 0;
-                next; # already matched this; try again
+                $match = 0, next; # try again
             } else {
-                unless ($self->{options}{overlap}) {
-                    $self->next_atom;
-                }
+                $self->next_atom unless ($self->{options}{overlap});
                 last; # matched!
             }
         } else { 
-            my $atom = $self->next_atom;
-            last unless $atom;
-            $self->match_local_init($atom);
+            $self->next_atom or last;
         }
     }
     $match;
@@ -253,25 +269,14 @@ sub match_next {
 
 sub match_local_init {
     my ($patt, $atom) = @_;
-    my $state = 1;
-    my @stack = {
-        from_where_bond_i => [0], 
-        from_what_bond_i => [0],
-        from_where => [$atom], 
-        from_what => [$patt->atoms(1)],
-    };
     my $mol = $patt->map_to;
 
     print "match_local_init(",$patt->atoms(1),", $atom)\n" if $DEBUG;
-    for ($patt->atoms, $patt->bonds) { $_->map_to(undef) }
-    if ($mol and $patt->{options}{overlap}) {
-        $patt->{paint_tab} = {};
-    }
-    $patt->{stack} = \@stack;
-    $patt->{state} = $state;
 
-    # new stuff
-    $patt->{stack2} = [[0]];
+    # clean up
+    $_->map_to(undef) for ($patt->atoms, $patt->bonds);
+    $patt->{paint_tab} = {} if ($mol and $patt->{options}{overlap});
+    $patt->{stack} = [[0]];
     $patt->{backtrack} = 0;
     $patt->{current_atom} = $atom;
 }
@@ -279,7 +284,7 @@ sub match_local_init {
 
 sub match_local_next {
     my ($patt) = @_;
-    my $stack = $patt->{stack2};
+    my $stack = $patt->{stack};
     my $paint_tab = $patt->{paint_tab};
     my $match = 0;
     my $backtrack = $patt->{backtrack};
@@ -410,11 +415,11 @@ sub match_local_next {
             }
             next;
         } else {
-            die "shouldn't be here!";
+            die "shouldn't be here; what=($what)!";
         }
     }
     $patt->{backtrack} = $backtrack;
-    $patt->{stack2} = $stack;
+    $patt->{stack} = $stack;
     $match;
 }
 
@@ -453,23 +458,23 @@ sub _flatten {
 
 =head1 VERSION
 
-0.21
+0.25
 
 =head1 SEE ALSO
 
 L<Chemistry::Pattern::Atom>, L<Chemistry::Pattern::Bond>, L<Chemistry::Mol>,
-L<Chemistry::File>
+L<Chemistry::File>, L<Chemistry::File::SMARTS>.
 
 The PerlMol website L<http://www.perlmol.org/>
 
 =head1 AUTHOR
 
-Ivan Tubert E<lt>itub@cpan.orgE<gt>
+Ivan Tubert-Brohman E<lt>itub@cpan.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2004 Ivan Tubert. All rights reserved. This program is free
-software; you can redistribute it and/or modify it under the same terms as
+Copyright (c) 2004 Ivan Tubert-Brohman. All rights reserved. This program is
+free software; you can redistribute it and/or modify it under the same terms as
 Perl itself.
 
 =cut
