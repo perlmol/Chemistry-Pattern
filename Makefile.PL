@@ -6,7 +6,7 @@ WriteMakefile(
     'NAME'		=> 'Chemistry::Pattern',
     'VERSION_FROM'	=> 'Pattern.pm', # finds $VERSION
     'PREREQ_PM'		=> {
-        'Chemistry::Mol' => '0.22',
+        'Chemistry::Mol' => '0.24',
         'Test::Simple' => 0,
     },
 );

@@ -1,14 +1,12 @@
-Chemistry/Pattern version 0.20
+Chemistry/Pattern version 0.21
 ==============================
 
 This module implements a generic molecule pattern matching engine. In other
 words, a sort of "regular expressions for molecules". This module is part of
 the PerlMol project, http://www.perlmol.org/.
 
-Changes since version 0.15:
-        - Added support for disconnected patterns.
-        - Completely replaced the algorithm with a simpler and somewhat more
-          readable one.
+Changes since version 0.20
+        - Added atom_class and bond_class methods to Pattern.pm.
 
 INSTALLATION
 

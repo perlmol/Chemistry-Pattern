@@ -1,5 +1,5 @@
 package Chemistry::Pattern::Bond;
-$VERSION = '0.20';
+$VERSION = '0.21';
 # $Id$
 
 =head1 NAME
@@ -88,7 +88,7 @@ sub map_to {
 
 =head1 VERSION
 
-0.20
+0.21
 
 =head1 SEE ALSO
 
