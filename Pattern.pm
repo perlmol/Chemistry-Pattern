@@ -156,6 +156,7 @@ sub match_next {
                 next; # already matched this; try again
             } else {
                 unless ($self->{options}{overlap}) {
+                    
                     $self->next_atom;
                 }
                 last; # matched!
@@ -183,7 +184,7 @@ sub match_local_init {
 
     print "match_local_init(",$patt->atoms(1),", $atom)\n" if $Debug;
     for ($patt->atoms, $patt->bonds) { $_->map_to(undef) }
-    if ($mol) {
+    if ($mol and $patt->{options}{overlap}) {
         for ($mol->atoms, $mol->bonds) { $_->del_attr('painted') }
     }
     $patt->{stack} = \@stack;
