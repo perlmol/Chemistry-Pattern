@@ -1,5 +1,7 @@
 #!/home/ivan/bin/perl -s
 
+$| = 1;
+
 use Chemistry::Smiles;
 use Chemistry::Mol;
 use blib;
@@ -10,6 +12,7 @@ use Data::Dumper;
 
 our $Debug ||= 0;
 $Chemistry::Pattern::Atom::Debug = $Debug;
+$Chemistry::Pattern::Debug = $Debug;
 
 if (@ARGV < 2) {
     die "ptest.pl <pattern> <mol>...\n";
@@ -23,6 +26,7 @@ my $mol_parser = new Chemistry::Smiles();
 my ($mol, $patt);
 
 $mol_parser->parse($patt_str, $patt = Chemistry::Pattern->new);
+#$patt->options(permute => 1);
 
 for my $mol_str (@mol_strs) {
     print "Mol: $mol_str\n";
@@ -33,7 +37,7 @@ for my $mol_str (@mol_strs) {
         @ret = $patt->atom_map;
         print "Matched: (@ret)\n";
     }
-
+    print "Matched: ()\n";
 }
 
 
