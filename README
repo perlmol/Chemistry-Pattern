@@ -7,6 +7,8 @@ todo:
     extract atom and bond tests to methods in the corresponding classes
     allow user-defined test subroutines
     add atom and bond mapping from patt to mol
+    add look-ahead and negation
+    consider adding * and +
 
 INSTALLATION
 

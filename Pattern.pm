@@ -79,8 +79,9 @@ sub match_first {
     my @ret;
     for my $atom ($mol->atoms) {
         @ret = $patt->match_local($atom);
-        return @ret if @ret;
+        last if @ret;
     }
+    @ret;
 }
 
 sub match_local {
@@ -89,8 +90,8 @@ sub match_local {
     my ($match, @ret) = $patt->atoms(1)->match(
         where => $atom,
         #what => $patt->atoms(1),
-        from_where => '',
-        from_what => '',
+        from_where => [],
+        from_what => [],
     );
     return @ret;
 }

@@ -1,4 +1,4 @@
-#!/home/ivan/bin/perl
+#!/home/ivan/bin/perl -s
 
 use Chemistry::Smiles;
 use Chemistry::Mol;
@@ -8,6 +8,8 @@ use strict;
 use warnings;
 use Data::Dumper;
 
+our $Debug ||= 0;
+$Chemistry::Pattern::Atom::Debug = $Debug;
 
 my $mol_str = $ARGV[0] || "CCCC";
 my $patt_str = $ARGV[1] || "CC";
@@ -22,5 +24,7 @@ $mol_parser->parse($patt_str, $patt = Chemistry::Pattern->new);
 
 my @ret;
 
+#$patt->atoms(1)->test_sub(sub{1});
 @ret = $patt->match_first($mol);
-print "Matched (@ret)\n";
+print "Matched: (@ret)\n";
+

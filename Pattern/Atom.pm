@@ -26,6 +26,17 @@ use base qw(Chemistry::Atom);
 
 our $Debug = 0;
 
+sub test {
+    my ($what, $where) = @_;
+    if ($what->test_sub) {
+         return $what->test_sub->($what, $where);
+    } else {
+         return $what->symbol eq $where->symbol;
+    }
+}
+
+Chemistry::Obj::accessor('test_sub');
+
 sub match {
     my $what = shift; # self - the pattern atom to match
     my (%opts) = @_;
@@ -34,11 +45,18 @@ sub match {
     my @ret;
     my $match = 0;
     print "match_atom -- where: $where; what: $what; ",
-        "from_where: $from_where; from_what: $from_what;\n" if $Debug;
+        "from_where: [@$from_where]; from_what: [@$from_what];\n" if $Debug;
     
-    if ($where->attr("painted") and not $what->attr("painted")) {
+    if ($what->attr("painted")) { # ring closure in pattern
+        if ($where->attr("painted")) { # ring also closed ok in mol
+            print "\tring closed at $where\n" if $Debug; 
+            ($match, @ret) = $what->match_bonds(@_); # continue with same params
+        } else {
+            print "\tring didn't close at $where\n" if $Debug;
+        }
+    } elsif ($where->attr("painted")) { # ring closure in mol
         print "\tatom $where already visited\n" if $Debug;
-    } elsif ($where->symbol eq $what->symbol) { ### ATOM TEST
+    } elsif ($what->test($where)) { ### ATOM TEST
         print "\tatom $where matches $what\n" if $Debug;
 
         # Now check bonds
@@ -64,18 +82,21 @@ sub match_bonds {
     my @ret;
 
     print "match_bonds -- where: $where; what: $what; ",
-        "from_where: $from_where; from_what: $from_what;\n" if $Debug;
+        "from_where: [@$from_where]; from_what: [@$from_what];\n" if $Debug;
 
     my ($patt_bond) = grep {! $_->attr("painted")} $what->bonds;
     if (!$patt_bond) { # no more bonds to match?
         print "\tNo more bonds to match at $what\n" if $Debug;
-        if ($from_where) { # go back and finish previous atom
-            ($match, @ret) = $from_what->match_bonds(
-                where=>$from_where, 
-                from_where=>'', from_what=>''
+        if (@$from_where) { # go back and finish previous atom
+            #pop @$from
+            $where = pop @$from_where;
+            $what = pop @$from_what;
+            ($match, @ret) = $what->match_bonds(
+                where=>$where, 
+                from_where=>$from_where, from_what=>$from_what
             );
         } else {
-            $match = 1;
+            $match = 1; # Finally matched! This is the deepest point
         }
     } else { # Match next bond
         for my $mol_bond (grep {!$_->attr("painted")} $where->bonds) {
@@ -90,9 +111,11 @@ sub match_bonds {
                 # recursive call to match atom
                 $patt_bond->attr("painted", 1);
                 $mol_bond->attr("painted", 1);
+                push @$from_where, $where;
+                push @$from_what, $what;
                 ($match, @ret) = $patt_nei->match(
                     where=>$mol_nei, 
-                    from_where=>$where, from_what=>$what
+                    from_where=>$from_where, from_what=>$from_what
                 );
                 $patt_bond->attr("painted", 0);
                 $mol_bond->attr("painted", 0);
