@@ -6,7 +6,7 @@
 # Makemaker generated files and dirs.
 ^MANIFEST\.
 ^Makefile$
-^blib/
+^blib
 ^MakeMaker-\d
 
 # Temp, old and emacs backup files.

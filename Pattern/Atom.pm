@@ -1,10 +1,10 @@
 package Chemistry::Pattern::Atom;
-$VERSION = '0.25';
+$VERSION = '0.26';
 # $Id$
 
 =head1 NAME
 
-Chemistry::Pattern::Atom
+Chemistry::Pattern::Atom - An atom that knows how to match
 
 =head1 SYNOPSIS
 
@@ -83,7 +83,7 @@ Chemistry::Obj::accessor('map_to');
 
 =head1 VERSION
 
-0.25
+0.26
 
 =head1 SEE ALSO
 
@@ -97,7 +97,7 @@ Ivan Tubert-Brohman E<lt>itub@cpan.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2004 Ivan Tubert-Brohman. All rights reserved. This program is
+Copyright (c) 2005 Ivan Tubert-Brohman. All rights reserved. This program is
 free software; you can redistribute it and/or modify it under the same terms as
 Perl itself.
 

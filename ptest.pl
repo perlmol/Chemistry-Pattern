@@ -14,7 +14,7 @@ use Benchmark;
 
 our $debug ||= 0;
 our $permute ||= 0;
-our $overlap ||= 1;
+our $overlap = 1 unless defined $overlap;
 our $anchor;
 my %options = (permute => $permute, overlap => $overlap);
 
