@@ -1,5 +1,8 @@
 Revision history for Perl extension Chemistry::Pattern.
 
+0.27
+        - Added 'reset' option to $pattern->match. Thanks to Peter Spiro!
+
 0.26  16 May 2005
         - Fixed mapping bug for overlap => 0
 

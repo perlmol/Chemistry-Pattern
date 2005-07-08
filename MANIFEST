@@ -24,3 +24,4 @@ t/Pattern.t
 t/pod.t
 t/ring.pat
 t/stack.pat
+META.yml                                 Module meta-data (added by MakeMaker)

@@ -228,7 +228,9 @@ sub match {
     my ($self, $mol, %opts) = @_;
     print "match $self $mol\n" if $DEBUG;
     if (defined($mol) and $self->map_to ne $mol 
-        or defined($opts{atom}) and $opts{atom} ne $self->{anchor}) { 
+        or $opts{reset}
+        or defined($opts{atom}) and $opts{atom} ne $self->{anchor}
+    ){ 
         $self->reset($mol, %opts);
     }
     my $match = $self->match_next;
