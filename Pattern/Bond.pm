@@ -48,7 +48,7 @@ sub test {
          return $what->test_sub->($what, $where);
     } else {
          #return $what->order eq $where->order;
-         return ($what->order <= $where->order) || ($where->aromatic && $what->aromatic);          
+         return ($what->order eq $where->order) || ($where->aromatic && $what->aromatic);          
     }
 }
 
