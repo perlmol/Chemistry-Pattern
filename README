@@ -1,12 +1,14 @@
-Chemistry/Pattern version 0.26
+Chemistry/Pattern version 0.27
 ==============================
 
 This module implements a generic molecule pattern matching engine. In other
 words, a sort of "regular expressions for molecules". This module is part of
 the PerlMol project, http://www.perlmol.org/.
 
-Changes since version 0.25
-        - Fixed mapping bug for overlap => 0
+Changes since version 0.26
+        - Added 'reset' option to $pattern->match. Thanks to Peter Spiro!
+        - Change the default bond matching test to account for aromaticity.
+          Thanks to Liliana Felix Avila and Evan Yokum.
 
 INSTALLATION
 
@@ -28,7 +30,7 @@ The following modules are required only for the tests:
 
 COPYRIGHT AND LICENSE
 
-Copyright (C) 2005 Ivan Tubert-Brohman <itub@cpan.org>
+Copyright (C) 2009 Ivan Tubert-Brohman <itub@cpan.org>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself. 

@@ -1,4 +1,4 @@
-#!/home/ivan/bin/perl -s
+#!/usr/bin/perl -s
 
 $| = 1;
 

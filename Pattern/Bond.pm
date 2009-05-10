@@ -1,5 +1,5 @@
 package Chemistry::Pattern::Bond;
-$VERSION = '0.26';
+$VERSION = '0.27';
 # $Id$
 
 =head1 NAME
@@ -17,11 +17,11 @@ Chemistry::Pattern::Bond - A bond that knows how to match
 =head1 DESCRIPTION
 
 Objects of this class represent bonds in a pattern. This is a subclass of
-Chemistry::Bond. In addition to the properties of regular bonds, 
-pattern bonds have a method for testing if they match an bond in a molecule.
-By default, a pattern bond matches an bond if they have the same bond order.
-It is possible to substitute this by an arbitrary criterion by providing
-a custom test subroutine.
+Chemistry::Bond. In addition to the properties of regular bonds, pattern bonds
+have a method for testing if they match an bond in a molecule.  By default, a
+pattern bond matches an bond if they have the same bond order or both are
+aromatic. It is possible to substitute this by an arbitrary criterion by
+providing a custom test subroutine.
 
 =cut
 
@@ -47,7 +47,8 @@ sub test {
     if ($what->test_sub) {
          return $what->test_sub->($what, $where);
     } else {
-         return $what->order eq $where->order;
+         #return $what->order eq $where->order;
+         return ($what->order <= $where->order) || ($where->aromatic && $what->aromatic);          
     }
 }
 
@@ -88,7 +89,7 @@ sub map_to {
 
 =head1 VERSION
 
-0.26
+0.27
 
 =head1 SEE ALSO
 
@@ -102,7 +103,7 @@ Ivan Tubert-Brohman E<lt>itub@cpan.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2005 Ivan Tubert-Brohman. All rights reserved. This program is
+Copyright (c) 2009 Ivan Tubert-Brohman. All rights reserved. This program is
 free software; you can redistribute it and/or modify it under the same terms as
 Perl itself.
 

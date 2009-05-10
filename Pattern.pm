@@ -1,5 +1,5 @@
 package Chemistry::Pattern;
-$VERSION = '0.26';
+$VERSION = '0.27';
 # $Id$
 
 =head1 NAME
@@ -208,10 +208,11 @@ sub bond_map {
 
 =item $pattern->match($mol, %options)
 
-Returns true if the pattern matches the molecule. If called again for the 
-same molecule, continues matching where it left off (in a way similar to global
+Returns true if the pattern matches the molecule. If called again for the same
+molecule, continues matching where it left off (in a way similar to global
 regular expressions under scalar context). When there are no matches left,
-returns false.
+returns false. To force the match to always start from scratch instead of
+continuing where it left off, the C<reset> option may be used.
 
     $pattern->match($mol, atom => $atom)
 
@@ -454,7 +455,7 @@ sub _flatten {
 
 =head1 VERSION
 
-0.26
+0.27
 
 =head1 SEE ALSO
 
@@ -469,7 +470,7 @@ Ivan Tubert-Brohman E<lt>itub@cpan.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2005 Ivan Tubert-Brohman. All rights reserved. This program is
+Copyright (c) 2009 Ivan Tubert-Brohman. All rights reserved. This program is
 free software; you can redistribute it and/or modify it under the same terms as
 Perl itself.
 
